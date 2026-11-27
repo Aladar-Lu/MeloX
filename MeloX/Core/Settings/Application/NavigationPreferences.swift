@@ -250,3 +250,25 @@ enum LibraryPage: String, CaseIterable, Identifiable {
         }
     }
 }
+
+/// The three sub-sections of the 收藏歌单 page: the listening rank,
+/// the user's own playlists and the playlists collected from others.
+/// Their order on the page is user-configurable and persisted.
+enum LibraryPlaylistSection: String, CaseIterable, Identifiable {
+    case listeningRank
+    case own
+    case collected
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .listeningRank:
+            L10n.string("ui.library.my_listening_rank")
+        case .own:
+            L10n.string("ui.library.playlists.own")
+        case .collected:
+            L10n.string("ui.library.playlists.collected")
+        }
+    }
+}

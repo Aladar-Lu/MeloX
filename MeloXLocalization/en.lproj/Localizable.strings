@@ -1147,6 +1147,12 @@
 "ui.library.search.history" = "Search Listening History";
 "ui.library.heart_mode_failed" = "Could Not Start Heart Mode";
 "ui.library.play_all_failed" = "Could Not Play All";
+"ui.library.playlists.collected" = "Saved Playlists";
+"ui.library.playlists.own" = "Created Playlists";
+"ui.library.playlists.pin" = "Pin";
+"ui.library.playlists.pinned" = "Pinned Playlists";
+"ui.library.playlists.sort" = "Sort";
+"ui.library.playlists.unpin" = "Unpin";
 "ui.library.complete_song_list_failed" = "The complete song list could not be loaded.";
 "ui.library.searching_all_favorite_songs" = "Searching All Favorite Songs";
 "ui.library.search_again" = "Search Again";

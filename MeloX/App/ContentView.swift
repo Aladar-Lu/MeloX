@@ -38,6 +38,13 @@ struct ContentView: View {
     @State private var nowPlayingSharePresentation: NeteaseSharePresentation?
     @State private var pendingMusicRoute: MusicRoute?
     @State private var isTabViewBottomAccessorySuppressed = false
+
+    /// Durable "open Now Playing" request from MeloXApp (Live
+    /// Activity / Dynamic Island tap). A plain flag instead of the
+    /// old fire-and-forget notification: if the app cold-starts
+    /// from the deep link, the flag is still set when this view
+    /// appears, so the request cannot be lost.
+    @Binding private var openNowPlaying: Bool
     @State private var hasRestoredPlayback = false
     @State private var hasHandledHeartModeLaunch = false
     @State private var heartModeLaunchErrorMessage: String?
@@ -46,8 +53,12 @@ struct ContentView: View {
 
     private let playerTransitionID = "now-playing"
 
-    init(initialTab: AppTab = .home) {
+    init(
+        initialTab: AppTab = .home,
+        openNowPlaying: Binding<Bool> = .constant(false)
+    ) {
         _selectedTab = State(initialValue: initialTab)
+        _openNowPlaying = openNowPlaying
     }
 
     var body: some View {
@@ -188,15 +199,21 @@ struct ContentView: View {
                 guard phase == .active else { return }
                 player.refreshLyricsLiveActivity()
             }
-            .onReceive(
-                NotificationCenter.default.publisher(
-                    for: .meloxOpenNowPlaying
-                )
-            ) { _ in
+            .onChange(of: openNowPlaying) { _, shouldOpen in
+                guard shouldOpen else { return }
                 // Live Activity / Dynamic Island tap: open the app
                 // on the Now Playing screen. No current-song guard
                 // here — playback may still be restoring after a
                 // cold start, and NowPlayingView handles a nil song.
+                openNowPlaying = false
+                playerPresentation = .nowPlaying
+            }
+            .onAppear {
+                // Cold start from a Live Activity tap: the flag may
+                // already be set before this view appeared, so the
+                // onChange above never fires for it.
+                guard openNowPlaying else { return }
+                openNowPlaying = false
                 playerPresentation = .nowPlaying
             }
             .onChange(of: floatingLyrics.restorationRequestID) {
@@ -411,8 +428,7 @@ struct ContentView: View {
             HomeView()
         case .recommended:
             HomeRecommendedView()
-                .navigationTitle("ui.navigation.recommended")
-                .navigationBarTitleDisplayMode(.large)
+                .tabRootHeaderTitle(L10n.string("ui.navigation.recommended"))
         case .music:
             ExploreView(navigationTitle: L10n.string("ui.navigation.music"))
         case .podcasts:
@@ -441,32 +457,43 @@ struct ContentView: View {
     private func primaryToolbar(
         for tab: AppTab
     ) -> some ToolbarContent {
-        ToolbarItemGroup(placement: .topBarTrailing) {
-            if library.isLoggedIn {
+        // The avatar / private-messages / song-recognition trio
+        // lives on the Home tab only. Every other tab keeps just
+        // its own actions (e.g. the playlists tab keeps its
+        // create-playlist button).
+        if tab == .home {
+            // Messages + recognition share one capsule; the avatar
+            // stands alone as its own circle, Apple Music style.
+            // Each ToolbarItemGroup renders as its own glass pill.
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if library.isLoggedIn {
+                    Button {
+                        navigate(to: .privateMessages, in: tab)
+                    } label: {
+                        Label("ui.messages.private.title", systemImage: "bubble.left.and.bubble.right")
+                            .labelStyle(.iconOnly)
+                    }
+                    .accessibilityLabel("ui.messages.private.title")
+                    .accessibilityHint("ui.messages.private.open_hint")
+                }
+
                 Button {
-                    navigate(to: .privateMessages, in: tab)
+                    navigate(to: .songRecognition, in: tab)
                 } label: {
-                    Label("ui.messages.private.title", systemImage: "bubble.left.and.bubble.right")
+                    Label("ui.recognition.title", systemImage: "waveform")
                         .labelStyle(.iconOnly)
                 }
-                .accessibilityLabel("ui.messages.private.title")
-                .accessibilityHint("ui.messages.private.open_hint")
+                .accessibilityLabel("ui.recognition.title")
             }
 
-            Button {
-                navigate(to: .songRecognition, in: tab)
-            } label: {
-                Label("ui.recognition.title", systemImage: "waveform")
-                    .labelStyle(.iconOnly)
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button {
+                    presentedSheet = .settings
+                } label: {
+                    accountToolbarLabel
+                }
+                .accessibilityLabel(accountToolbarAccessibilityLabel)
             }
-            .accessibilityLabel("ui.recognition.title")
-
-            Button {
-                presentedSheet = .settings
-            } label: {
-                accountToolbarLabel
-            }
-            .accessibilityLabel(accountToolbarAccessibilityLabel)
         }
     }
 

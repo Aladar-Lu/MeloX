@@ -29,10 +29,3 @@ nonisolated enum LyricsLiveActivityDeepLink {
         return url.host == "now-playing" || url.path == "/now-playing"
     }
 }
-
-extension Notification.Name {
-    /// Posted by `MeloXApp` when a Live Activity deep link (or the
-    /// system Live Activity user activity) asks the app to open the
-    /// Now Playing screen. `ContentView` observes it.
-    static let meloxOpenNowPlaying = Notification.Name("MeloXOpenNowPlaying")
-}

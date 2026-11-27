@@ -20,27 +20,30 @@ enum LyricsLiveActivityFormatter {
             artist: songArtist
         )
 
+        // Fallbacks never show a lyric: the island is a way back
+        // into the app, not a lyrics display. A format a user
+        // stored explicitly still renders through `replacements`
+        // above; only the fallbacks changed.
+        let titleArtist = [songTitle, songArtist]
+            .filter { !$0.isEmpty }
+            .joined(
+                separator: L10n.string("ui.common.metadata_separator")
+            )
         return LyricsLiveActivityText(
             title: render(
                 preferences.titleFormat,
                 replacements: replacements,
-                fallback: lyric
+                fallback: songTitle
             ),
             subtitle: render(
                 preferences.subtitleFormat,
                 replacements: replacements,
-                fallback: [songTitle, songArtist]
-                    .filter { !$0.isEmpty }
-                    .joined(
-                        separator: L10n.string(
-                            "ui.common.metadata_separator"
-                        )
-                    )
+                fallback: titleArtist
             ),
             compact: render(
                 preferences.compactFormat,
                 replacements: replacements,
-                fallback: lyric
+                fallback: titleArtist
             )
         )
     }

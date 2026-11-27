@@ -27,7 +27,10 @@ final class AppSettings {
     }
     static let defaultLyricsLiveActivityEnabled = false
     static var defaultLyricsLiveActivityTitleFormat: String {
-        L10n.string("ui.lyrics.format.token.lyrics")
+        // The island is a way back into the app, not a lyrics
+        // display: default to the song title, never a lyric line.
+        // A format a user stored explicitly is still honoured.
+        L10n.string("ui.lyrics.format.token.title")
     }
     static var defaultLyricsLiveActivitySubtitleFormat: String {
         L10n.format(
@@ -37,7 +40,13 @@ final class AppSettings {
         )
     }
     static var defaultLyricsLiveActivityCompactFormat: String {
-        L10n.string("ui.lyrics.format.token.lyrics")
+        // Compact island: "title · artist", never a lyric line.
+        // A format a user stored explicitly is still honoured.
+        L10n.format(
+            "ui.lyrics.format.default.title_artist",
+            L10n.string("ui.lyrics.format.token.title"),
+            L10n.string("ui.lyrics.format.token.artist")
+        )
     }
     static let defaultLyricsLiveActivityShowsArtwork = true
     static let defaultLyricsLiveActivityShowsNextLyric = true
@@ -157,6 +166,10 @@ final class AppSettings {
             "melox.navigation.separatedLibraryPages"
         static let homeTabOrder = "melox.navigation.homeTabOrder"
         static let tabOrder = "melox.navigation.tabOrder"
+        static let pinnedLibraryPlaylistIDs =
+            "melox.library.pinnedPlaylistIDs"
+        static let libraryPlaylistSectionOrder =
+            "melox.library.playlistSectionOrder"
         static let area = "musicArea"
         static let showPlayCount = "showPlayCount"
         static let playerBackgroundStyle = "playerBackgroundStyle"
@@ -523,6 +536,50 @@ final class AppSettings {
                 forKey: Key.tabOrder
             )
         }
+    }
+
+    /// IDs of the playlists pinned at the top of the 收藏歌单 page,
+    /// in pinned order. A pinned playlist also stays in its own
+    /// section list; pinning is a local shortcut, not a move.
+    private(set) var pinnedLibraryPlaylistIDs: [Int] {
+        didSet {
+            defaults.set(
+                pinnedLibraryPlaylistIDs.map(String.init),
+                forKey: Key.pinnedLibraryPlaylistIDs
+            )
+        }
+    }
+
+    func isPlaylistPinned(_ playlistID: Int) -> Bool {
+        pinnedLibraryPlaylistIDs.contains(playlistID)
+    }
+
+    func setPlaylistPinned(_ playlistID: Int, pinned: Bool) {
+        var ids = pinnedLibraryPlaylistIDs
+        ids.removeAll { $0 == playlistID }
+        if pinned {
+            ids.append(playlistID)
+        }
+        pinnedLibraryPlaylistIDs = ids
+    }
+
+    /// Order of the three sub-sections of the 收藏歌单 page
+    /// (listening rank, own playlists, collected playlists).
+    private(set) var libraryPlaylistSectionOrder:
+        [LibraryPlaylistSection] {
+        didSet {
+            defaults.set(
+                libraryPlaylistSectionOrder.map(\.rawValue),
+                forKey: Key.libraryPlaylistSectionOrder
+            )
+        }
+    }
+
+    func setLibraryPlaylistSectionOrder(
+        _ sections: [LibraryPlaylistSection]
+    ) {
+        libraryPlaylistSectionOrder =
+            Self.normalizedLibraryPlaylistSectionOrder(sections)
     }
 
     var embeddedLibraryPages: [LibraryPage] {
@@ -1423,6 +1480,20 @@ final class AppSettings {
             separatedLibraryPages: normalizedSeparatedPages,
             homeTabs: normalizedHomeTabOrder
         )
+        pinnedLibraryPlaylistIDs = (
+            defaults.array(
+                forKey: Key.pinnedLibraryPlaylistIDs
+            ) as? [String]
+        )?.compactMap(Int.init) ?? []
+        let storedLibraryPlaylistSectionOrder = (
+            defaults.array(
+                forKey: Key.libraryPlaylistSectionOrder
+            ) as? [String]
+        )?.compactMap(LibraryPlaylistSection.init(rawValue:))
+        libraryPlaylistSectionOrder =
+            Self.normalizedLibraryPlaylistSectionOrder(
+                storedLibraryPlaylistSectionOrder
+            )
         musicArea = defaults.string(forKey: Key.area) ?? "ALL"
         showPlayCount = defaults.object(forKey: Key.showPlayCount) as? Bool ?? true
         playerBackgroundStyle = PlayerBackgroundStyle(
@@ -1865,6 +1936,20 @@ final class AppSettings {
     ) -> [LibraryPage] {
         let pageSet = Set(pages)
         return LibraryPage.availableCases.filter(pageSet.contains)
+    }
+
+    private static func normalizedLibraryPlaylistSectionOrder(
+        _ sections: [LibraryPlaylistSection]?
+    ) -> [LibraryPlaylistSection] {
+        var seen: Set<LibraryPlaylistSection> = []
+        var normalized = (sections ?? []).filter {
+            seen.insert($0).inserted
+        }
+        for section in LibraryPlaylistSection.allCases
+        where seen.insert(section).inserted {
+            normalized.append(section)
+        }
+        return normalized
     }
 
     private static func normalizedHomeTabOrder(

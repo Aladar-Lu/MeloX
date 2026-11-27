@@ -69,13 +69,8 @@ struct LyricsLiveActivityWidget: Widget {
                     .lineLimit(2)
                     .contentTransition(.opacity)
 
-                if state.presentation.showsNextLyric,
-                   let nextLyric = visibleNextLyric(in: state) {
-                    Text(nextLyric)
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.55))
-                        .lineLimit(1)
-                }
+                // No lyric line here: the island is a way back
+                // into the app, not a lyrics display.
 
                 HStack(spacing: 8) {
                     Text(state.subtitle)
@@ -113,13 +108,8 @@ struct LyricsLiveActivityWidget: Widget {
                 .lineLimit(2)
                 .contentTransition(.opacity)
 
-            if state.presentation.showsNextLyric,
-               let nextLyric = visibleNextLyric(in: state) {
-                Text(nextLyric)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+            // No lyric line here: the island is a way back into
+            // the app, not a lyrics display.
 
             HStack(spacing: 8) {
                 Text(state.subtitle)
@@ -152,15 +142,6 @@ struct LyricsLiveActivityWidget: Widget {
         } else {
             ProgressView(value: state.progress)
         }
-    }
-
-    private func visibleNextLyric(
-        in state: LyricsLiveActivityAttributes.ContentState
-    ) -> String? {
-        let lyric = state.nextLyric?.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
-        return lyric.flatMap { $0.isEmpty ? nil : $0 }
     }
 
     private func compactLeadingContent(

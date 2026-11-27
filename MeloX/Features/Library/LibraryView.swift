@@ -65,20 +65,15 @@ struct LibraryView: View {
             fixedPage.map { AppTab(libraryPage: $0).title }
                 ?? L10n.string("ui.navigation.library"),
             isPresented: showsNavigationTitle,
-            usesInlineTitle: fixedPage == nil && availablePages.count > 1
-        )
+            hasPageMenu: fixedPage == nil && availablePages.count > 1
+        ) {
+            pagePicker.pickerStyle(.inline)
+        }
         .librarySearchable(
             text: $searchQuery,
             prompt: searchPrompt,
             isEnabled: canSearchCurrentPage
         )
-        .toolbar {
-            if showsNavigationTitle, fixedPage == nil, availablePages.count > 1 {
-                ToolbarTitleMenu {
-                    pagePicker.pickerStyle(.inline)
-                }
-            }
-        }
         .onAppear {
             guard !hasAppliedInitialPage else { return }
             hasAppliedInitialPage = true
@@ -216,15 +211,22 @@ struct LibraryView: View {
 }
 
 private extension View {
+    /// One-line tab-root header (title left, actions right). When
+    /// the library tab hosts several pages, the title is a menu
+    /// that switches the page, like before.
     @ViewBuilder
-    func libraryNavigationTitle(
+    func libraryNavigationTitle<MenuContent: View>(
         _ title: String,
         isPresented: Bool,
-        usesInlineTitle: Bool
+        hasPageMenu: Bool,
+        @ViewBuilder pageMenu: () -> MenuContent
     ) -> some View {
         if isPresented {
-            navigationTitle(title)
-                .navigationBarTitleDisplayMode(usesInlineTitle ? .inline : .automatic)
+            if hasPageMenu {
+                tabRootHeaderTitleMenu(title, content: pageMenu)
+            } else {
+                tabRootHeaderTitle(title)
+            }
         } else {
             self
         }
@@ -239,7 +241,7 @@ private extension View {
         if isEnabled {
             searchable(
                 text: text,
-                placement: .navigationBarDrawer(displayMode: .always),
+                placement: .navigationBarDrawer(displayMode: .automatic),
                 prompt: Text(prompt)
             )
         } else {

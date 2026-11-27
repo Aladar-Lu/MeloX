@@ -140,7 +140,7 @@ struct PlaylistDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .searchable(
             text: $searchQuery,
-            placement: .navigationBarDrawer(displayMode: .always),
+            placement: .navigationBarDrawer(displayMode: .automatic),
             prompt: Text(
                 prefersToplistLayout
                     ? L10n.string("ui.toplists.search_prompt")

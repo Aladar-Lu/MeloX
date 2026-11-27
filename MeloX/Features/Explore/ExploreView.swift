@@ -34,7 +34,7 @@ struct ExploreView: View {
     var body: some View {
         if showsNavigationTitle {
             content
-                .navigationTitle(navigationTitle)
+                .tabRootHeaderTitle(navigationTitle)
         } else {
             content
         }

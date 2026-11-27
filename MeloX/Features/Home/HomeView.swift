@@ -24,43 +24,47 @@ struct HomeView: View {
             sectionContent(for: activeSection)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .navigationTitle("ui.navigation.home")
-        .navigationBarTitleDisplayMode(.large)
+        .tabRootHeaderTitle(L10n.string("ui.navigation.home"))
         .onChange(of: availableSections) { _, sections in
             guard !sections.contains(section) else { return }
             section = sections.first ?? .recommended
         }
     }
 
-    @ViewBuilder
+    /// Horizontal scrollable pill row, in the exact style of
+    /// `ExploreCategoryPicker` (borderedProminent capsule buttons,
+    /// small control size, accent tint when selected, text only).
+    /// Replaces the old segmented/menu picker: with five sections
+    /// the menu opened a vertical popup; the pill row keeps every
+    /// section one tap away. Items stay dynamic from
+    /// `settings.homeTabs` — nothing is hardcoded.
     private var sectionPicker: some View {
-        if availableSections.count <= 4 {
-            Picker("ui.home.section_picker", selection: $section) {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(spacing: 8) {
                 ForEach(availableSections) { section in
-                    Text(section.settingsTitle)
-                        .tag(section)
-                }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(.background)
-        } else {
-            Picker("ui.home.section_picker", selection: $section) {
-                ForEach(availableSections) { section in
-                    Label(
-                        section.settingsTitle,
-                        systemImage: section.systemImage
+                    Button {
+                        self.section = section
+                    } label: {
+                        Text(section.settingsTitle)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.capsule)
+                    .controlSize(.small)
+                    .tint(
+                        section == activeSection
+                            ? .accentColor
+                            : Color.secondary.opacity(0.14)
                     )
-                    .tag(section)
+                    .foregroundStyle(
+                        section == activeSection ? .white : .primary
+                    )
                 }
             }
-            .pickerStyle(.menu)
             .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.background)
         }
+        .scrollClipDisabled()
+        .padding(.vertical, 8)
+        .background(.bar)
     }
 
     @ViewBuilder

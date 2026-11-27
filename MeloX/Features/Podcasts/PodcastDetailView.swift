@@ -65,7 +65,7 @@ struct PodcastDetailView: View {
         .searchable(
             text: $searchQuery,
             placement:
-                .navigationBarDrawer(displayMode: .always),
+                .navigationBarDrawer(displayMode: .automatic),
             prompt: Text("ui.podcasts.search_prompt")
         )
         .toolbarBackground(.hidden, for: .navigationBar)

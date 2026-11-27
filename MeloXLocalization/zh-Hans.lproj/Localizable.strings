@@ -1147,6 +1147,12 @@
 "ui.library.search.history" = "在播放历史中搜索";
 "ui.library.heart_mode_failed" = "无法启动心动模式";
 "ui.library.play_all_failed" = "无法播放全部";
+"ui.library.playlists.collected" = "收藏歌单";
+"ui.library.playlists.own" = "自建歌单";
+"ui.library.playlists.pin" = "置顶";
+"ui.library.playlists.pinned" = "置顶歌单";
+"ui.library.playlists.sort" = "排序";
+"ui.library.playlists.unpin" = "取消置顶";
 "ui.library.complete_song_list_failed" = "无法读取完整歌曲列表。";
 "ui.library.searching_all_favorite_songs" = "正在搜索全部收藏歌曲";
 "ui.library.search_again" = "重新搜索";

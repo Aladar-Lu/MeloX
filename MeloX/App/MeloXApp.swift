@@ -21,6 +21,14 @@ struct MeloXApp: App {
     @State private var releaseNotes: AppReleaseNotesStore
     @State private var isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
 
+    /// Durable "open Now Playing" request, set when the app is
+    /// opened from a Live Activity / Dynamic Island tap and
+    /// consumed by ContentView. A flag instead of a notification:
+    /// a notification posted during a cold start can fire before
+    /// ContentView starts listening and is lost; this flag is
+    /// still set when ContentView appears.
+    @State private var pendingOpenNowPlaying = false
+
     init() {
         let settings = AppSettings()
         let releaseNotes = AppReleaseNotesStore(
@@ -77,7 +85,10 @@ struct MeloXApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(initialTab: settings.launchTab)
+            ContentView(
+                initialTab: settings.launchTab,
+                openNowPlaying: $pendingOpenNowPlaying
+            )
                 .environment(settings)
                 .environment(api)
                 .environment(library)
@@ -117,10 +128,7 @@ struct MeloXApp: App {
                 }
                 .onOpenURL { url in
                     guard LyricsLiveActivityDeepLink.isNowPlaying(url) else { return }
-                    NotificationCenter.default.post(
-                        name: .meloxOpenNowPlaying,
-                        object: nil
-                    )
+                    pendingOpenNowPlaying = true
                 }
                 .onContinueUserActivity(
                     LyricsLiveActivityDeepLink.liveActivityUserActivityType
@@ -128,10 +136,7 @@ struct MeloXApp: App {
                     // System fallback when a Live Activity is tapped
                     // without an explicit deep link: iOS delivers an
                     // NSUserActivity of this type instead of a URL.
-                    NotificationCenter.default.post(
-                        name: .meloxOpenNowPlaying,
-                        object: nil
-                    )
+                    pendingOpenNowPlaying = true
                 }
         }
     }
