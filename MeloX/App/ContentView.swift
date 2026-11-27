@@ -425,7 +425,7 @@ struct ContentView: View {
     private func tabRoot(for tab: AppTab) -> some View {
         switch tab {
         case .home:
-            HomeView()
+            HomeView(onAccountTap: { presentedSheet = .settings })
         case .recommended:
             HomeRecommendedView()
                 .tabRootHeaderTitle(L10n.string("ui.navigation.recommended"))
@@ -457,14 +457,18 @@ struct ContentView: View {
     private func primaryToolbar(
         for tab: AppTab
     ) -> some ToolbarContent {
-        // The avatar / private-messages / song-recognition trio
-        // lives on the Home tab only. Every other tab keeps just
-        // its own actions (e.g. the playlists tab keeps its
-        // create-playlist button).
+        // Private messages + song recognition live on the Home
+        // tab only, sharing one capsule. Every other tab keeps
+        // just its own actions (e.g. the playlists tab keeps its
+        // create-playlist button). The avatar is NOT here — it
+        // lives in HomeView's own .toolbar modifier: iOS renders
+        // each view's toolbar as its own glass pill, while a
+        // second group — or a second .toolbar modifier — on this
+        // same view would merge into this capsule, the way the
+        // trio merged in 9110403. The Library "+" stands alone
+        // for the same reason: it comes from LibraryView's own
+        // toolbar, a different view.
         if tab == .home {
-            // Messages + recognition share one capsule; the avatar
-            // stands alone as its own circle, Apple Music style.
-            // Each ToolbarItemGroup renders as its own glass pill.
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if library.isLoggedIn {
                     Button {
@@ -485,15 +489,6 @@ struct ContentView: View {
                 }
                 .accessibilityLabel("ui.recognition.title")
             }
-
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                Button {
-                    presentedSheet = .settings
-                } label: {
-                    accountToolbarLabel
-                }
-                .accessibilityLabel(accountToolbarAccessibilityLabel)
-            }
         }
     }
 
@@ -507,40 +502,6 @@ struct ContentView: View {
         case .songRecognition:
             SongRecognitionView()
         }
-    }
-
-    @ViewBuilder
-    private var accountToolbarLabel: some View {
-        if let profile = library.profile {
-            AsyncImage(url: profile.artworkURL) { phase in
-                if let image = phase.image {
-                    image
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    Image(systemName: "person.fill")
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .frame(width: 28, height: 28)
-            .background(.quaternary, in: .circle)
-            .clipShape(.circle)
-        } else {
-            Image(
-                systemName: library.isLoggedIn
-                    ? "person.crop.circle.fill"
-                    : "person.crop.circle"
-            )
-        }
-    }
-
-    private var accountToolbarAccessibilityLabel: String {
-        if let profile = library.profile {
-            return L10n.format("ui.account.settings_for_user", profile.nickname)
-        }
-        return library.isLoggedIn
-            ? L10n.string("ui.account.settings")
-            : L10n.string("ui.account.login_settings")
     }
 
     private func navigationPathBinding(

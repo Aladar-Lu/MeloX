@@ -16,6 +16,7 @@ struct LibraryPlaylistsView: View {
     @Environment(NeteaseAPI.self) private var api
     @Environment(PlayerStore.self) private var player
     @Environment(AppSettings.self) private var settings
+    @Environment(\.openMusicRoute) private var openMusicRoute
 
     @State private var showsCreation = false
     @State private var pendingDeletion: Playlist?
@@ -318,8 +319,21 @@ struct LibraryPlaylistsView: View {
         }
     }
 
+    /// A plain Button + programmatic navigation, NOT a
+    /// NavigationLink. The grid is one List row holding many
+    /// cards, and a List draws its disclosure chevron (">") on
+    /// every NavigationLink row — meaningless beside a big
+    /// square cover — and the links in that shared row all
+    /// fired together: tapping one card pushed every playlist
+    /// in the grid onto the stack. A Button gets no chevron,
+    /// and one tap appends exactly one route, so one tap
+    /// opens exactly one playlist. Context menu and the zoom
+    /// transition are unchanged; search-result rows keep
+    /// their NavigationLinks (and chevrons) as before.
     private func playlistCard(for playlist: Playlist) -> some View {
-        NavigationLink(value: MusicRoute.playlist(playlist)) {
+        Button {
+            openMusicRoute(.playlist(playlist))
+        } label: {
             VStack(alignment: .leading, spacing: 8) {
                 ArtworkImage(url: playlist.artworkURL, cornerRadius: 10)
                 Text(playlist.name)
