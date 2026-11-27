@@ -469,7 +469,10 @@ struct LibraryPlaylistsView: View {
     private func playlists(
         for section: LibraryPlaylistSection
     ) -> [Playlist] {
-        let base = switch section {
+        // Explicit type: without it the empty-array branch makes
+        // the compiler infer `base` as [Any] (the switch gives the
+        // `[]` literal no element type to inherit).
+        let base: [Playlist] = switch section {
         case .own:
             library.favoritePlaylists.filter(library.canDelete)
         case .collected:
