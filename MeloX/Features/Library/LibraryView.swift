@@ -7,21 +7,35 @@ struct LibraryView: View {
 
     private let fixedPage: LibraryPage?
     private let showsNavigationTitle: Bool
+    /// When provided (the 收藏歌单 tab root), the page uses its
+    /// own one-line header — large title + buttons on a single
+    /// row — and hides the nav bar. Nested uses and fixed pages
+    /// pass nil and keep the stock behaviour.
+    let topBarActions: TopBarActions?
 
     @State private var section: LibraryPage
     @State private var hasAppliedInitialPage = false
     @State private var showsLogin = false
     @State private var searchQuery = ""
+    /// The playlists create / sort state, owned here so the
+    /// one-line header (not a toolbar) can drive it. Passed
+    /// down to the playlists overview; sub-pages keep their own
+    /// local copy.
+    @State private var isReorderingSections = false
+    @State private var showsCreation = false
+    @FocusState private var isSearchFieldFocused: Bool
 
     init(
         fixedPage: LibraryPage? = nil,
-        showsNavigationTitle: Bool = true
+        showsNavigationTitle: Bool = true,
+        topBarActions: TopBarActions? = nil
     ) {
         let resolvedFixedPage = fixedPage.flatMap { page in
             LibraryPage.availableCases.contains(page) ? page : nil
         }
         self.fixedPage = resolvedFixedPage
         self.showsNavigationTitle = showsNavigationTitle
+        self.topBarActions = topBarActions
         _section = State(initialValue: resolvedFixedPage ?? .songs)
     }
 
@@ -29,9 +43,37 @@ struct LibraryView: View {
         fixedPage.map { [$0] } ?? settings.embeddedLibraryPages
     }
 
+    /// The main tab root (no fixed page, header actions given).
+    /// Only it gets the one-line header; fixed pages and nested
+    /// uses keep the nav bar.
+    private var isMainTabRoot: Bool {
+        fixedPage == nil && topBarActions != nil
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            if !showsNavigationTitle, fixedPage == nil, availablePages.count > 1 {
+            if isMainTabRoot, let actions = topBarActions {
+                PageHeader(title: L10n.string("ui.navigation.library")) {
+                    libraryHeaderButtons(actions: actions)
+                }
+
+                if canSearchCurrentPage {
+                    librarySearchField
+                }
+
+                if availablePages.count > 1 {
+                    Group {
+                        if availablePages.count > 4, horizontalSizeClass == .compact {
+                            pagePicker.pickerStyle(.menu)
+                        } else {
+                            pagePicker.pickerStyle(.segmented)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(.background)
+                }
+            } else if !showsNavigationTitle, fixedPage == nil, availablePages.count > 1 {
                 Group {
                     if availablePages.count > 4, horizontalSizeClass == .compact {
                         pagePicker.pickerStyle(.menu)
@@ -44,41 +86,56 @@ struct LibraryView: View {
                 .background(.background)
             }
 
-            if availablePages.isEmpty {
-                ContentUnavailableView(
-                    "ui.library.pages_separated.title",
-                    systemImage: "rectangle.3.group",
-                    description: Text("ui.library.pages_separated.message")
-                )
-            } else if section == .downloads {
-                LibraryDownloadsView(searchQuery: searchQuery)
-            } else if !library.isLoggedIn {
-                loginUnavailableView
-            } else if section == .cloud {
-                CloudMusicView(searchQuery: searchQuery)
-            } else {
-                libraryContent
+            Group {
+                if availablePages.isEmpty {
+                    ContentUnavailableView(
+                        "ui.library.pages_separated.title",
+                        systemImage: "rectangle.3.group",
+                        description: Text("ui.library.pages_separated.message")
+                    )
+                } else if section == .downloads {
+                    LibraryDownloadsView(searchQuery: searchQuery)
+                } else if !library.isLoggedIn {
+                    loginUnavailableView
+                } else if section == .cloud {
+                    CloudMusicView(searchQuery: searchQuery)
+                } else {
+                    libraryContent
+                }
             }
+            // The section views are ScrollViews / Lists inside
+            // this NavigationStack. With the nav bar hidden the
+            // stack still hands them a ~150pt top safe-area inset
+            // (the large-title bar height) — the void under the
+            // header. The header, search field and picker above
+            // are plain rows and take no such inset. Fixed pages
+            // keep a visible large title, so their inset is the
+            // correct spacing and is left alone.
+            .ignoresSafeArea(
+                .container,
+                edges: (isMainTabRoot || !showsNavigationTitle) ? .top : []
+            )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .libraryNavigationTitle(
             fixedPage.map { AppTab(libraryPage: $0).title }
                 ?? L10n.string("ui.navigation.library"),
-            isPresented: showsNavigationTitle,
+            isPresented: showsNavigationTitle && !isMainTabRoot,
             usesInlineTitle: fixedPage == nil
         )
         .librarySearchable(
             text: $searchQuery,
             prompt: searchPrompt,
-            isEnabled: canSearchCurrentPage
+            isEnabled: canSearchCurrentPage && !isMainTabRoot
         )
         .toolbar {
-            if showsNavigationTitle, fixedPage == nil, availablePages.count > 1 {
+            if showsNavigationTitle, fixedPage == nil, availablePages.count > 1, !isMainTabRoot {
                 ToolbarTitleMenu {
                     pagePicker.pickerStyle(.inline)
                 }
             }
         }
+        .toolbar(isMainTabRoot ? .hidden : .visible, for: .navigationBar)
         .onAppear {
             guard !hasAppliedInitialPage else { return }
             hasAppliedInitialPage = true
@@ -138,6 +195,91 @@ struct LibraryView: View {
         }
     }
 
+    /// The header's right side for the main tab root: the trio
+    /// plus the playlists create / sort buttons in ONE capsule,
+    /// exactly as the nav bar merged them. The create / sort
+    /// pair only appears on the playlists overview; while
+    /// reordering, the checkmark replaces them.
+    @ViewBuilder
+    private func libraryHeaderButtons(actions: TopBarActions) -> some View {
+        HeaderPill {
+            HeaderTrioContent(actions: actions)
+
+            if section == .playlists {
+                if isReorderingSections {
+                    Button {
+                        isReorderingSections = false
+                    } label: {
+                        Label(
+                            "ui.common.done",
+                            systemImage: "checkmark.circle.fill"
+                        )
+                        .labelStyle(.iconOnly)
+                    }
+                    .accessibilityLabel("ui.common.done")
+                } else {
+                    Button(
+                        "ui.playlists.create.title",
+                        systemImage: "plus"
+                    ) {
+                        showsCreation = true
+                    }
+                    .disabled(!library.isLoggedIn)
+
+                    Menu {
+                        Button("ui.library.playlists.sort") {
+                            isReorderingSections = true
+                        }
+                    } label: {
+                        Label(
+                            "ui.library.playlists.sort",
+                            systemImage: "arrow.up.arrow.down"
+                        )
+                        .labelStyle(.iconOnly)
+                    }
+                    .accessibilityLabel("ui.library.playlists.sort")
+                }
+            }
+        }
+        .foregroundStyle(.red)
+    }
+
+    /// The library filter field, as a plain TextField. The nav
+    /// bar is hidden on the main tab root, so `.searchable`
+    /// (which lives in the nav bar drawer) cannot be used here.
+    /// It binds to the same `searchQuery` the section views
+    /// filter on, so filtering works exactly as before. Unlike
+    /// the drawer's `.automatic` field it stays visible; the
+    /// field is small and always useful.
+    private var librarySearchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField(text: $searchQuery, prompt: Text(searchPrompt))
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.search)
+                .focused($isSearchFieldFocused)
+                .onSubmit { isSearchFieldFocused = false }
+            if !searchQuery.isEmpty {
+                Button {
+                    searchQuery = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            .secondary.opacity(0.12),
+            in: RoundedRectangle(cornerRadius: 10)
+        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+    }
+
     private var loginUnavailableView: some View {
         ContentUnavailableView {
             Label("ui.account.login_required", systemImage: "person.crop.circle.badge.exclamationmark")
@@ -169,7 +311,19 @@ struct LibraryView: View {
             case .songs:
                 LibrarySongsView(searchQuery: searchQuery)
             case .playlists:
-                LibraryPlaylistsView(searchQuery: searchQuery)
+                // On the main tab root the header owns the
+                // create / sort state, so the overview shares
+                // it. Everywhere else (fixed page, nested,
+                // sub-page) the overview keeps its own.
+                if isMainTabRoot {
+                    LibraryPlaylistsView(
+                        searchQuery: searchQuery,
+                        isReorderingSections: $isReorderingSections,
+                        showsCreation: $showsCreation
+                    )
+                } else {
+                    LibraryPlaylistsView(searchQuery: searchQuery)
+                }
             case .artists:
                 LibraryArtistsView(searchQuery: searchQuery)
             case .albums:

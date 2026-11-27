@@ -19,20 +19,40 @@ struct LibraryPlaylistsView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(\.openMusicRoute) private var openMusicRoute
 
-    @State private var showsCreation = false
     @State private var pendingDeletion: Playlist?
     @State private var isDeletingPlaylist = false
     @State private var deletionError: String?
     @State private var playbackErrorMessage: String?
-    @State private var isReorderingSections = false
     @State private var draggedSection: LibraryPlaylistSection?
+
+    /// Create / sort state. The 收藏歌单 tab root passes its own
+    /// bindings (owned by LibraryView, driven by the one-line
+    /// header); every other use (fixed page, sub-page) passes
+    /// nothing and keeps local state.
+    private let isReorderingSectionsBinding: Binding<Bool>?
+    private let showsCreationBinding: Binding<Bool>?
+    @State private var localIsReorderingSections = false
+    @State private var localShowsCreation = false
+
+    /// The create / sort state: the tab root's binding when one
+    /// was passed, otherwise this view's own local state.
+    private var reordering: Binding<Bool> {
+        isReorderingSectionsBinding ?? $localIsReorderingSections
+    }
+    private var creation: Binding<Bool> {
+        showsCreationBinding ?? $localShowsCreation
+    }
 
     init(
         searchQuery: String,
-        filter: LibraryPlaylistSection? = nil
+        filter: LibraryPlaylistSection? = nil,
+        isReorderingSections: Binding<Bool>? = nil,
+        showsCreation: Binding<Bool>? = nil
     ) {
         self.searchQuery = searchQuery
         self.filter = filter
+        self.isReorderingSectionsBinding = isReorderingSections
+        self.showsCreationBinding = showsCreation
     }
 
     var body: some View {
@@ -66,7 +86,7 @@ struct LibraryPlaylistsView: View {
             // appear; the reorder drag handles only exist on
             // the overview rows.
             if searching {
-                isReorderingSections = false
+                reordering.wrappedValue = false
             }
         }
         .confirmationDialog(
@@ -104,11 +124,16 @@ struct LibraryPlaylistsView: View {
             Text(playbackErrorMessage ?? "")
         }
         .toolbar {
-            if filter == nil {
-                if isReorderingSections {
+            // On the main tab root the one-line header (in
+            // LibraryView) owns the create / sort buttons, so
+            // this toolbar stays empty there. Fixed pages and
+            // sub-pages keep their toolbar buttons.
+            if isReorderingSectionsBinding == nil {
+                if filter == nil {
+                if reordering.wrappedValue {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
-                            isReorderingSections = false
+                            reordering.wrappedValue = false
                         } label: {
                             Label(
                                 "ui.common.done",
@@ -125,13 +150,13 @@ struct LibraryPlaylistsView: View {
                             "ui.playlists.create.title",
                             systemImage: "plus"
                         ) {
-                            showsCreation = true
+                            creation.wrappedValue = true
                         }
                         .disabled(!library.isLoggedIn)
 
                         Menu {
                             Button("ui.library.playlists.sort") {
-                                isReorderingSections = true
+                                reordering.wrappedValue = true
                             }
                         } label: {
                             Label(
@@ -149,13 +174,14 @@ struct LibraryPlaylistsView: View {
                         "ui.playlists.create.title",
                         systemImage: "plus"
                     ) {
-                        showsCreation = true
+                        creation.wrappedValue = true
                     }
                     .disabled(!library.isLoggedIn)
                 }
             }
+            }
         }
-        .sheet(isPresented: $showsCreation) {
+        .sheet(isPresented: creation) {
             PlaylistCreationSheet { name, isPrivate in
                 try await library.createPlaylist(name: name, isPrivate: isPrivate)
             }
@@ -259,7 +285,7 @@ struct LibraryPlaylistsView: View {
     private func sectionRow(
         for section: LibraryPlaylistSection
     ) -> some View {
-        if isReorderingSections {
+        if reordering.wrappedValue {
             sectionRowLabel(for: section)
                 .onDrag {
                     draggedSection = section
@@ -322,7 +348,7 @@ struct LibraryPlaylistsView: View {
         HStack(spacing: 12) {
             Label(section.title, systemImage: sectionIcon(for: section))
             Spacer()
-            if isReorderingSections {
+            if reordering.wrappedValue {
                 Image(systemName: "line.3.horizontal")
                     .foregroundStyle(.secondary)
             } else {

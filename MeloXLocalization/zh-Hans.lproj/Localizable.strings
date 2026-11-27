@@ -1052,6 +1052,7 @@
 "ui.search.loading_recommendations" = "正在载入推荐";
 "ui.search.recommendations_failed" = "推荐载入失败";
 "ui.search.prompt" = "音乐内容或网易云链接";
+"ui.search.scope" = "搜索范围";
 "ui.search.failed" = "搜索失败";
 "ui.search.link_failed" = "无法打开链接";
 "ui.error.favorite_failed" = "收藏失败";

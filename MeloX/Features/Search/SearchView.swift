@@ -21,48 +21,75 @@ struct SearchView: View {
     @State private var linkedSong: Song?
     @State private var presentedListenTogetherLink:
         NeteaseListenTogetherLink?
+    /// When provided (the Search tab root), the page uses its own
+    /// one-line header — large 搜索 + the trio on a single row —
+    /// and a plain TextField, and hides the nav bar. The nav
+    /// bar is where `.searchable` lives, so the custom field
+    /// replaces it (same `query` state, so searching works the
+    /// same; suggestions and scopes are re-rendered below).
+    let topBarActions: TopBarActions?
+    @FocusState private var isSearchFieldFocused: Bool
+
+    init(topBarActions: TopBarActions? = nil) {
+        self.topBarActions = topBarActions
+    }
 
     var body: some View {
         Group {
-            if trimmedQuery.isEmpty {
-                SearchDiscoveryView()
-            } else if let recognizedLink {
-                linkResult(for: recognizedLink)
-            } else {
-                searchResults
-            }
-        }
-        .navigationTitle("ui.navigation.search")
-        // Inline, not large: the title shares the bar row with
-        // nothing on the right — one line, no empty white band
-        // above it. It has to stay a nav title because the
-        // search field lives in the navigation bar drawer; a
-        // custom header would need the bar hidden and the
-        // search field would go with it.
-        .navigationBarTitleDisplayMode(.inline)
-        .searchable(
-            text: $query,
-            placement: .navigationBarDrawer(displayMode: .always),
-            prompt: "ui.search.prompt"
-        )
-        .searchSuggestions {
-            if settings.searchSuggestionsEnabled {
-                ForEach(suggestions, id: \.self) { suggestion in
-                    Label {
-                        Text(verbatim: suggestion)
-                    } icon: {
-                        Image(systemName: "magnifyingglass")
+            if let actions = topBarActions {
+                VStack(spacing: 0) {
+                    PageHeader(title: L10n.string("ui.navigation.search")) {
+                        HeaderTrioButtons(actions: actions)
                     }
-                    .searchCompletion(suggestion)
+
+                    searchFieldRow
+
+                    if isSearchFieldFocused || !trimmedQuery.isEmpty {
+                        searchScopePicker
+                    }
+
+                    searchContent
+                        // The results / discovery List is a
+                        // ScrollView inside this NavigationStack.
+                        // With the nav bar hidden the stack still
+                        // hands it a ~150pt top safe-area inset
+                        // (the large-title bar height) — the void
+                        // under the header.
+                        .ignoresSafeArea(.container, edges: .top)
                 }
-            }
-        }
-        .task(id: "\(settings.searchSuggestionsEnabled):\(query)") {
-            await loadSuggestions()
-        }
-        .searchScopes($scope) {
-            ForEach(availableSearchKinds) { kind in
-                Text(kind.title).tag(kind)
+                .toolbar(.hidden, for: .navigationBar)
+            } else {
+                searchContent
+                    .navigationTitle("ui.navigation.search")
+                    // Inline, not large: the title shares the bar row with
+                    // nothing on the right — one line, no empty white band
+                    // above it. It has to stay a nav title because the
+                    // search field lives in the navigation bar drawer; a
+                    // custom header would need the bar hidden and the
+                    // search field would go with it.
+                    .navigationBarTitleDisplayMode(.inline)
+                    .searchable(
+                        text: $query,
+                        placement: .navigationBarDrawer(displayMode: .always),
+                        prompt: "ui.search.prompt"
+                    )
+                    .searchSuggestions {
+                        if settings.searchSuggestionsEnabled {
+                            ForEach(suggestions, id: \.self) { suggestion in
+                                Label {
+                                    Text(verbatim: suggestion)
+                                } icon: {
+                                    Image(systemName: "magnifyingglass")
+                                }
+                                .searchCompletion(suggestion)
+                            }
+                        }
+                    }
+                    .searchScopes($scope) {
+                        ForEach(availableSearchKinds) { kind in
+                            Text(kind.title).tag(kind)
+                        }
+                    }
             }
         }
         .overlay {
@@ -103,6 +130,9 @@ struct SearchView: View {
         } message: {
             Text(library.errorMessage ?? L10n.string("ui.common.unknown_error"))
         }
+        .task(id: "\(settings.searchSuggestionsEnabled):\(query)") {
+            await loadSuggestions()
+        }
         .task(id: SearchRequest(query: query, kind: scope)) {
             let request = SearchRequest(query: query, kind: scope)
             guard completedRequest != request else { return }
@@ -115,6 +145,104 @@ struct SearchView: View {
                 scope = .songs
             }
         }
+    }
+
+    /// The results / discovery area, shared by both layouts.
+    /// While the custom field is focused and suggestions exist,
+    /// the suggestions list takes its place (the stock layout's
+    /// `.searchSuggestions` does the same natively).
+    private var searchContent: some View {
+        Group {
+            if showingSuggestions {
+                suggestionsList
+            } else if trimmedQuery.isEmpty {
+                SearchDiscoveryView()
+            } else if let recognizedLink {
+                linkResult(for: recognizedLink)
+            } else {
+                searchResults
+            }
+        }
+    }
+
+    private var showingSuggestions: Bool {
+        isSearchFieldFocused
+            && settings.searchSuggestionsEnabled
+            && !trimmedQuery.isEmpty
+            && !suggestions.isEmpty
+    }
+
+    private var suggestionsList: some View {
+        List {
+            ForEach(suggestions, id: \.self) { suggestion in
+                Button {
+                    query = suggestion
+                    isSearchFieldFocused = false
+                } label: {
+                    Label {
+                        Text(verbatim: suggestion)
+                    } icon: {
+                        Image(systemName: "magnifyingglass")
+                    }
+                }
+            }
+        }
+        .listStyle(.plain)
+    }
+
+    /// The search field as a plain TextField (the nav bar is
+    /// hidden, so `.searchable` cannot be used). It binds to the
+    /// same `query` state, so the search itself is unchanged.
+    private var searchFieldRow: some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("ui.search.prompt", text: $query)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.search)
+                    .focused($isSearchFieldFocused)
+                    .onSubmit { isSearchFieldFocused = false }
+                if !query.isEmpty {
+                    Button {
+                        query = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                .secondary.opacity(0.12),
+                in: RoundedRectangle(cornerRadius: 10)
+            )
+
+            if isSearchFieldFocused || !trimmedQuery.isEmpty {
+                Button("ui.common.cancel") {
+                    query = ""
+                    isSearchFieldFocused = false
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+    }
+
+    /// The search scope bar, re-rendered as a segmented picker
+    /// (the stock layout's `.searchScopes` lives on
+    /// `.searchable`, which the hidden nav bar cannot host).
+    private var searchScopePicker: some View {
+        Picker("ui.search.scope", selection: $scope) {
+            ForEach(availableSearchKinds) { kind in
+                Text(kind.title).tag(kind)
+            }
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 4)
     }
 
     private func loadSuggestions() async {

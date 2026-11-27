@@ -6,6 +6,11 @@ struct ExploreView: View {
 
     let showsNavigationTitle: Bool
     let navigationTitle: String
+    /// When provided (a Discover / 音乐 tab root), the page uses
+    /// its own one-line header — large title + the trio on a
+    /// single row — and hides the nav bar. Nested uses pass nil
+    /// and keep the stock behaviour.
+    let topBarActions: TopBarActions?
 
     @State private var category = "推荐歌单"
     @State private var playlists: [Playlist] = []
@@ -24,15 +29,32 @@ struct ExploreView: View {
 
     init(
         showsNavigationTitle: Bool = true,
-        navigationTitle: String = L10n.string("ui.navigation.discover")
+        navigationTitle: String = L10n.string("ui.navigation.discover"),
+        topBarActions: TopBarActions? = nil
     ) {
         self.showsNavigationTitle = showsNavigationTitle
         self.navigationTitle = navigationTitle
+        self.topBarActions = topBarActions
     }
 
     @ViewBuilder
     var body: some View {
-        if showsNavigationTitle {
+        if showsNavigationTitle, let actions = topBarActions {
+            VStack(spacing: 0) {
+                PageHeader(title: navigationTitle) {
+                    HeaderTrioButtons(actions: actions)
+                }
+
+                content
+                    // The content ScrollView would otherwise take
+                    // the NavigationStack's ~150pt top safe-area
+                    // inset (the large-title bar height) and leave
+                    // a void under the header. The header itself
+                    // is a plain row and takes no such inset.
+                    .ignoresSafeArea(.container, edges: .top)
+            }
+            .toolbar(.hidden, for: .navigationBar)
+        } else if showsNavigationTitle {
             content
                 .navigationTitle(navigationTitle)
         } else {

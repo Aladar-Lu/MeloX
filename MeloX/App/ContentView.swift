@@ -427,23 +427,36 @@ struct ContentView: View {
 
     @ViewBuilder
     private func tabRoot(for tab: AppTab) -> some View {
+        // The four main tabs render the trio as plain views in
+        // their own one-line header (large title + buttons on a
+        // single row, the Search layout at the other pages'
+        // size), so they get TopBarActions and no nav-bar
+        // toolbar. Every other tab keeps the trio in the nav bar.
+        let topBarActions = TopBarActions(
+            onMessagesTap: { navigate(to: .privateMessages, in: tab) },
+            onRecognitionTap: { navigate(to: .songRecognition, in: tab) },
+            onAccountTap: { presentedSheet = .settings }
+        )
         switch tab {
         case .home:
-            HomeView()
+            HomeView(topBarActions: topBarActions)
         case .recommended:
             HomeRecommendedView()
                 .navigationTitle("ui.navigation.recommended")
                 .navigationBarTitleDisplayMode(.large)
         case .music:
-            ExploreView(navigationTitle: L10n.string("ui.navigation.music"))
+            ExploreView(
+                navigationTitle: L10n.string("ui.navigation.music"),
+                topBarActions: topBarActions
+            )
         case .podcasts:
             PodcastHomeView()
         case .explore:
-            ExploreView()
+            ExploreView(topBarActions: topBarActions)
         case .library:
-            LibraryView()
+            LibraryView(topBarActions: topBarActions)
         case .search:
-            SearchView()
+            SearchView(topBarActions: topBarActions)
         case .librarySongs,
              .libraryPlaylists,
              .libraryAlbums,
@@ -462,7 +475,16 @@ struct ContentView: View {
     private func primaryToolbar(
         for tab: AppTab
     ) -> some ToolbarContent {
-        ToolbarItemGroup(placement: .topBarTrailing) {
+        // The four main tabs show the trio in their own header,
+        // not in the nav bar — their nav bar is hidden. All other
+        // tabs keep the trio here.
+        switch tab {
+        case .home, .music, .explore, .library, .search:
+            ToolbarItem(placement: .topBarTrailing) {
+                EmptyView()
+            }
+        default:
+            ToolbarItemGroup(placement: .topBarTrailing) {
             if library.isLoggedIn {
                 Button {
                     navigate(to: .privateMessages, in: tab)
@@ -488,6 +510,7 @@ struct ContentView: View {
                 accountToolbarLabel
             }
             .accessibilityLabel(accountToolbarAccessibilityLabel)
+            }
         }
     }
 

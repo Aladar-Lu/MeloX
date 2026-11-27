@@ -1052,6 +1052,7 @@
 "ui.search.loading_recommendations" = "Loading Recommendations";
 "ui.search.recommendations_failed" = "Could Not Load Recommendations";
 "ui.search.prompt" = "Music or a NetEase Cloud Music Link";
+"ui.search.scope" = "Search scope";
 "ui.search.failed" = "Search Failed";
 "ui.search.link_failed" = "Could Not Open Link";
 "ui.error.favorite_failed" = "Favorite Operation Failed";
