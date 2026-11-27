@@ -87,8 +87,8 @@ final class AudioPlaybackDeck: NSObject, @preconcurrency AudioPlayerDelegate {
                 // it plays straight through. Waiting a few
                 // seconds up front beats the stutter.
                 secondsRequiredToStartPlaying: 3,
-                secondsRequiredToStartPlayingAfterBufferUnderrun: 3,
-                gracePeriodAfterSeekInSeconds: 0.1),
+                gracePeriodAfterSeekInSeconds: 0.1,
+                secondsRequiredToStartPlayingAfterBufferUnderrun: 3),
             outputFormat: format)
         self.player = player
         channelCount = format?.channelCount ?? 2
