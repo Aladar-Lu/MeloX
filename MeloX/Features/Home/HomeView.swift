@@ -32,7 +32,22 @@ struct HomeView: View {
 
             sectionContent(for: activeSection)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentMargins(.top, 0, for: .scrollContent)
         }
+        // The two nested scroll views below (the pill picker's
+        // horizontal ScrollView and the section content's
+        // vertical ScrollView) must NOT inherit the navigation
+        // bar's top content inset. They sit BELOW the bar, so
+        // the ~130pt inset double-counts: in 9110405 it left a
+        // ~130pt dead band between the title and the pills and
+        // another ~130pt between the pills and the cards (measured
+        // on-device: title 120-160, pills 296-323, cards 460+).
+        // Discover proves the rule: its single root ScrollView
+        // gets the inset once, correctly, and has no gap. Zeroing
+        // the top scroll-content margin here removes both voids;
+        // the content still slides under the bar with the frosted
+        // mask when scrolled, like the other pages.
+        .contentMargins(.top, 0, for: .scrollContent)
         // Plain large title, like the original app and like the
         // target screenshot: the big 首页 sits below the bar,
         // the pills below it, content directly below the pills.
@@ -41,13 +56,17 @@ struct HomeView: View {
         // dead band, so it is gone.
         .navigationTitle("ui.navigation.home")
         .navigationBarTitleDisplayMode(.large)
-        // The avatar lives in THIS view's own .toolbar
-        // modifier — not in ContentView's primaryToolbar.
-        // iOS renders each view's toolbar as its own glass
-        // pill, while two groups on one view merge into a
-        // single capsule, the way the trio merged in 9110403.
-        // (The Library "+" stands alone for the same reason:
-        // it comes from LibraryView's own toolbar.)
+        // The avatar lives in THIS view's own .toolbar modifier,
+        // and it is the ONLY trailing toolbar item on the Home
+        // tab — so it renders as its own circular glass button
+        // at the far right. Private messages + song recognition
+        // are NOT in any toolbar: iOS 27 merges every
+        // .topBarTrailing item, from any view at any level, into
+        // a single pill, which is why the split kept failing
+        // (9110403 and 9110405 both showed one merged capsule).
+        // Those two live in a floating capsule in ContentView
+        // instead, sitting in the bar row to the left of this
+        // avatar button.
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -130,6 +149,10 @@ struct HomeView: View {
             .padding(.horizontal, 16)
         }
         .scrollClipDisabled()
+        // See the note on the body VStack: this horizontal
+        // ScrollView must not inherit the navigation bar's top
+        // inset, or the pills drop ~130pt below the title.
+        .contentMargins(.top, 0, for: .scrollContent)
         .padding(.vertical, 8)
         .background(.background)
     }

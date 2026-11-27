@@ -209,7 +209,10 @@ struct LibraryPlaylistsView: View {
                     sectionRow(for: section)
                     if section != visibleSections.last {
                         Divider()
-                            .padding(.leading, 16)
+                            // Under the row text, not under the
+                            // icon: text starts at 16 (edge
+                            // padding) + ~22 (icon) + 12 (gap).
+                            .padding(.leading, 50)
                     }
                 }
             }
@@ -328,7 +331,8 @@ struct LibraryPlaylistsView: View {
                     .foregroundStyle(.tertiary)
             }
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 16)
+        .padding(.horizontal, 16)
         .contentShape(.rect)
     }
 

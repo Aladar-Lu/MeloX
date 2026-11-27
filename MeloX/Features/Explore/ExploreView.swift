@@ -35,6 +35,15 @@ struct ExploreView: View {
         if showsNavigationTitle {
             content
                 .navigationTitle(navigationTitle)
+                // Inline title, not large: the Discover tab has
+                // no toolbar items, so a large title leaves the
+                // whole bar row above it as an empty white band
+                // (the trio pill filled that row in the original
+                // app, but the trio is Home-only now). An inline
+                // title puts 发现 in the bar row itself and the
+                // band is gone. Still plain Chinese text, never
+                // a button.
+                .navigationBarTitleDisplayMode(.inline)
         } else {
             content
         }

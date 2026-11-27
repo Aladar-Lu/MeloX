@@ -398,27 +398,92 @@ struct ContentView: View {
                     value: tab,
                     role: tab == .search ? .search : nil
                 ) {
-                    NavigationStack(
-                        path: navigationPathBinding(for: tab)
-                    ) {
-                        tabRoot(for: tab)
-                            .toolbar {
-                                primaryToolbar(for: tab)
-                            }
-                            .navigationDestination(
-                                for: ContentRoute.self
-                            ) { route in
-                                contentDestination(for: route)
-                            }
-                            .musicDestinations(
-                                in: musicNavigationNamespace
-                            )
+                    if tab == .home {
+                        // The messages + recognition capsule
+                        // floats in the Home bar row (see
+                        // homeMessagesCapsule). It needs the
+                        // safe-area top to sit centred in the
+                        // bar row, next to the avatar button.
+                        GeometryReader { geometry in
+                            navigationStack(for: tab)
+                                .overlay(alignment: .topTrailing) {
+                                    if navigationPaths[.home]?.isEmpty == true {
+                                        homeMessagesCapsule
+                                            .padding(
+                                                .top,
+                                                geometry.safeAreaInsets.top + 4
+                                            )
+                                            .padding(.trailing, 72)
+                                    }
+                                }
+                        }
+                    } else {
+                        navigationStack(for: tab)
                     }
                 }
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
         .environment(\.musicNavigationNamespace, musicNavigationNamespace)
+    }
+
+    private func navigationStack(for tab: AppTab) -> some View {
+        NavigationStack(
+            path: navigationPathBinding(for: tab)
+        ) {
+            tabRoot(for: tab)
+                .navigationDestination(
+                    for: ContentRoute.self
+                ) { route in
+                    contentDestination(for: route)
+                }
+                .musicDestinations(
+                    in: musicNavigationNamespace
+                )
+        }
+    }
+
+    /// Private messages + song recognition as a floating glass
+    /// capsule in the Home bar row, to the left of the avatar
+    /// button. They CANNOT live in the toolbar: iOS 27 merges
+    /// every .topBarTrailing item — from any view, at any level
+    /// — into a single pill, so the avatar split kept failing
+    /// (9110403 and 9110405 both showed one merged capsule).
+    /// The avatar stays in HomeView's toolbar, alone in its own
+    /// circular button at the far right; this capsule sits 72pt
+    /// from the right edge, clearing it with an 8-12pt gap.
+    /// Hidden whenever the Home stack has pushed a page, so it
+    /// never covers a detail page's own bar buttons.
+    private var homeMessagesCapsule: some View {
+        HStack(spacing: 16) {
+            if library.isLoggedIn {
+                Button {
+                    navigate(to: .privateMessages, in: .home)
+                } label: {
+                    Label("ui.messages.private.title", systemImage: "bubble.left.and.bubble.right")
+                        .labelStyle(.iconOnly)
+                }
+                .accessibilityLabel("ui.messages.private.title")
+                .accessibilityHint("ui.messages.private.open_hint")
+            }
+
+            Button {
+                navigate(to: .songRecognition, in: .home)
+            } label: {
+                Label("ui.recognition.title", systemImage: "waveform")
+                    .labelStyle(.iconOnly)
+            }
+            .accessibilityLabel("ui.recognition.title")
+        }
+        .foregroundStyle(Color.accentColor)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(
+            Capsule()
+                .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
+        )
+        .shadow(color: .black.opacity(0.08), radius: 8, y: 2)
     }
 
     @ViewBuilder
@@ -449,45 +514,6 @@ struct ContentView: View {
              .libraryHistory:
             if let page = tab.libraryPage {
                 LibraryView(fixedPage: page)
-            }
-        }
-    }
-
-    @ToolbarContentBuilder
-    private func primaryToolbar(
-        for tab: AppTab
-    ) -> some ToolbarContent {
-        // Private messages + song recognition live on the Home
-        // tab only, sharing one capsule. Every other tab keeps
-        // just its own actions (e.g. the playlists tab keeps its
-        // create-playlist button). The avatar is NOT here — it
-        // lives in HomeView's own .toolbar modifier: iOS renders
-        // each view's toolbar as its own glass pill, while a
-        // second group — or a second .toolbar modifier — on this
-        // same view would merge into this capsule, the way the
-        // trio merged in 9110403. The Library "+" stands alone
-        // for the same reason: it comes from LibraryView's own
-        // toolbar, a different view.
-        if tab == .home {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                if library.isLoggedIn {
-                    Button {
-                        navigate(to: .privateMessages, in: tab)
-                    } label: {
-                        Label("ui.messages.private.title", systemImage: "bubble.left.and.bubble.right")
-                            .labelStyle(.iconOnly)
-                    }
-                    .accessibilityLabel("ui.messages.private.title")
-                    .accessibilityHint("ui.messages.private.open_hint")
-                }
-
-                Button {
-                    navigate(to: .songRecognition, in: tab)
-                } label: {
-                    Label("ui.recognition.title", systemImage: "waveform")
-                        .labelStyle(.iconOnly)
-                }
-                .accessibilityLabel("ui.recognition.title")
             }
         }
     }
