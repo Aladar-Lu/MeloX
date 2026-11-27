@@ -188,6 +188,17 @@ struct ContentView: View {
                 guard phase == .active else { return }
                 player.refreshLyricsLiveActivity()
             }
+            .onReceive(
+                NotificationCenter.default.publisher(
+                    for: .meloxOpenNowPlaying
+                )
+            ) { _ in
+                // Live Activity / Dynamic Island tap: open the app
+                // on the Now Playing screen. No current-song guard
+                // here — playback may still be restoring after a
+                // cold start, and NowPlayingView handles a nil song.
+                playerPresentation = .nowPlaying
+            }
             .onChange(of: floatingLyrics.restorationRequestID) {
                 guard floatingLyrics.restorationRequestID > 0,
                       player.currentSong != nil else {

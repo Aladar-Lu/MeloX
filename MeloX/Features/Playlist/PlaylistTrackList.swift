@@ -251,8 +251,34 @@ private struct PlaylistTrackRow: View {
     @ViewBuilder
     private var leadingContent: some View {
         if showsArtwork {
-            ArtworkImage(url: song.album?.artworkURL, cornerRadius: 6)
-                .frame(width: 48, height: 48)
+            ZStack {
+                ArtworkImage(url: song.album?.artworkURL, cornerRadius: 6)
+                    .frame(width: 48, height: 48)
+
+                if isCurrentSong && !isSelectingDownloads {
+                    // Playing track: dim the cover and show a
+                    // waveform (play icon when paused, spinner
+                    // while loading) on top of it.
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.black.opacity(0.45))
+                        .frame(width: 48, height: 48)
+
+                    if player.isLoading {
+                        ProgressView()
+                            .controlSize(.mini)
+                            .tint(.white)
+                    } else if player.isPlaying {
+                        Image(systemName: "waveform")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.white)
+                    } else {
+                        Image(systemName: "play.fill")
+                            .font(.body.weight(.bold))
+                            .foregroundStyle(.white)
+                    }
+                }
+            }
+            .frame(width: 48, height: 48)
         } else if isCurrentSong && !isSelectingDownloads {
             ZStack {
                 Circle()

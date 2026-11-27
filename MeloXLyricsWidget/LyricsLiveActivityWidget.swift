@@ -8,12 +8,14 @@ struct LyricsLiveActivityWidget: Widget {
             for: LyricsLiveActivityAttributes.self
         ) { context in
             lockScreenContent(context.state)
+                .widgetURL(LyricsLiveActivityDeepLink.nowPlayingURL)
                 .activityBackgroundTint(.black.opacity(0.92))
                 .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     artwork(context.state, size: 42)
+                        .widgetURL(LyricsLiveActivityDeepLink.nowPlayingURL)
                 }
 
                 DynamicIslandExpandedRegion(.trailing) {
@@ -24,6 +26,7 @@ struct LyricsLiveActivityWidget: Widget {
                     )
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .widgetURL(LyricsLiveActivityDeepLink.nowPlayingURL)
                 }
 
                 DynamicIslandExpandedRegion(
@@ -31,13 +34,17 @@ struct LyricsLiveActivityWidget: Widget {
                     priority: 1
                 ) {
                     expandedContent(context.state)
+                        .widgetURL(LyricsLiveActivityDeepLink.nowPlayingURL)
                 }
             } compactLeading: {
                 compactLeadingContent(context.state)
+                    .widgetURL(LyricsLiveActivityDeepLink.nowPlayingURL)
             } compactTrailing: {
                 compactTrailingContent(context.state)
+                    .widgetURL(LyricsLiveActivityDeepLink.nowPlayingURL)
             } minimal: {
                 artwork(context.state, size: 24)
+                    .widgetURL(LyricsLiveActivityDeepLink.nowPlayingURL)
             }
             .keylineTint(.red)
         }

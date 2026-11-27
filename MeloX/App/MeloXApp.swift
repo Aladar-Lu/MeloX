@@ -115,6 +115,24 @@ struct MeloXApp: App {
                             .refreshAuthorizationStatus()
                     }
                 }
+                .onOpenURL { url in
+                    guard LyricsLiveActivityDeepLink.isNowPlaying(url) else { return }
+                    NotificationCenter.default.post(
+                        name: .meloxOpenNowPlaying,
+                        object: nil
+                    )
+                }
+                .onContinueUserActivity(
+                    LyricsLiveActivityDeepLink.liveActivityUserActivityType
+                ) { _ in
+                    // System fallback when a Live Activity is tapped
+                    // without an explicit deep link: iOS delivers an
+                    // NSUserActivity of this type instead of a URL.
+                    NotificationCenter.default.post(
+                        name: .meloxOpenNowPlaying,
+                        object: nil
+                    )
+                }
         }
     }
 

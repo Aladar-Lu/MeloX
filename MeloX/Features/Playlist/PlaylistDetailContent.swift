@@ -68,7 +68,7 @@ struct PlaylistDetailContent: View {
                     MusicCollectionTrackContent(
                         tracks: filteredTracks,
                         sourceID: playlist.id,
-                        showsArtwork: usesToplistLayout,
+                        showsArtwork: true,
                         loadingTitle: usesToplistLayout
                             ? L10n.string("ui.toplists.loading")
                             : L10n.string("ui.playlists.loading"),
