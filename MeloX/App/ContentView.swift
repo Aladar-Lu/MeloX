@@ -411,6 +411,9 @@ struct ContentView: View {
             path: navigationPathBinding(for: tab)
         ) {
             tabRoot(for: tab)
+                .toolbar {
+                    primaryToolbar(for: tab)
+                }
                 .navigationDestination(
                     for: ContentRoute.self
                 ) { route in
@@ -426,14 +429,11 @@ struct ContentView: View {
     private func tabRoot(for tab: AppTab) -> some View {
         switch tab {
         case .home:
-            HomeView(
-                onAccountTap: { presentedSheet = .settings },
-                onMessagesTap: { navigate(to: .privateMessages, in: .home) },
-                onRecognitionTap: { navigate(to: .songRecognition, in: .home) }
-            )
+            HomeView()
         case .recommended:
             HomeRecommendedView()
                 .navigationTitle("ui.navigation.recommended")
+                .navigationBarTitleDisplayMode(.large)
         case .music:
             ExploreView(navigationTitle: L10n.string("ui.navigation.music"))
         case .podcasts:
@@ -458,6 +458,39 @@ struct ContentView: View {
         }
     }
 
+    @ToolbarContentBuilder
+    private func primaryToolbar(
+        for tab: AppTab
+    ) -> some ToolbarContent {
+        ToolbarItemGroup(placement: .topBarTrailing) {
+            if library.isLoggedIn {
+                Button {
+                    navigate(to: .privateMessages, in: tab)
+                } label: {
+                    Label("ui.messages.private.title", systemImage: "bubble.left.and.bubble.right")
+                        .labelStyle(.iconOnly)
+                }
+                .accessibilityLabel("ui.messages.private.title")
+                .accessibilityHint("ui.messages.private.open_hint")
+            }
+
+            Button {
+                navigate(to: .songRecognition, in: tab)
+            } label: {
+                Label("ui.recognition.title", systemImage: "waveform")
+                    .labelStyle(.iconOnly)
+            }
+            .accessibilityLabel("ui.recognition.title")
+
+            Button {
+                presentedSheet = .settings
+            } label: {
+                accountToolbarLabel
+            }
+            .accessibilityLabel(accountToolbarAccessibilityLabel)
+        }
+    }
+
     @ViewBuilder
     private func contentDestination(
         for route: ContentRoute
@@ -468,6 +501,40 @@ struct ContentView: View {
         case .songRecognition:
             SongRecognitionView()
         }
+    }
+
+    @ViewBuilder
+    private var accountToolbarLabel: some View {
+        if let profile = library.profile {
+            AsyncImage(url: profile.artworkURL) { phase in
+                if let image = phase.image {
+                    image
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Image(systemName: "person.fill")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: 28, height: 28)
+            .background(.quaternary, in: .circle)
+            .clipShape(.circle)
+        } else {
+            Image(
+                systemName: library.isLoggedIn
+                    ? "person.crop.circle.fill"
+                    : "person.crop.circle"
+            )
+        }
+    }
+
+    private var accountToolbarAccessibilityLabel: String {
+        if let profile = library.profile {
+            return L10n.format("ui.account.settings_for_user", profile.nickname)
+        }
+        return library.isLoggedIn
+            ? L10n.string("ui.account.settings")
+            : L10n.string("ui.account.login_settings")
     }
 
     private func navigationPathBinding(

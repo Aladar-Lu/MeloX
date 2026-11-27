@@ -33,37 +33,11 @@ struct ExploreView: View {
     @ViewBuilder
     var body: some View {
         if showsNavigationTitle {
-            VStack(spacing: 0) {
-                // One-line header, same as Home: the title on
-                // its own line, plain large Chinese text. No
-                // buttons on the right here, so the characters
-                // just show on that line. The navigation bar is
-                // hidden — a large nav title would leave the
-                // bar row above it empty (the white band in
-                // 9110405), and an inline title would make the
-                // title small.
-                headerRow
-                content
-            }
-            .contentMargins(.top, 0, for: .scrollContent)
-            .toolbar(.hidden, for: .navigationBar)
+            content
+                .navigationTitle(navigationTitle)
         } else {
             content
         }
-    }
-
-    /// The one-line header: large title on the left, nothing
-    /// on the right. Pinned above the scrolling content, with
-    /// the frosted bar background.
-    private var headerRow: some View {
-        HStack {
-            Text(navigationTitle)
-                .font(.largeTitle.bold())
-            Spacer()
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(.bar)
     }
 
     private var content: some View {
