@@ -79,7 +79,16 @@ final class AudioPlaybackDeck: NSObject, @preconcurrency AudioPlayerDelegate {
         let player = AudioStreaming.AudioPlayer(
             configuration: AudioPlayerConfiguration(
                 bufferSizeInSeconds: max(source.preferredForwardBufferDuration, 8),
-                secondsRequiredToStartPlaying: 0.3, gracePeriodAfterSeekInSeconds: 0.1),
+                // Wait for a few seconds of audio before starting,
+                // and before resuming after a stall, instead of
+                // starting after 0.3s. An uncached song used to
+                // play <1s, stall, then restart from the
+                // beginning; starting with a real buffer means
+                // it plays straight through. Waiting a few
+                // seconds up front beats the stutter.
+                secondsRequiredToStartPlaying: 3,
+                secondsRequiredToStartPlayingAfterBufferUnderrun: 3,
+                gracePeriodAfterSeekInSeconds: 0.1),
             outputFormat: format)
         self.player = player
         channelCount = format?.channelCount ?? 2

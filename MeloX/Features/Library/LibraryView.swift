@@ -52,9 +52,9 @@ struct LibraryView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if isMainTabRoot, let actions = topBarActions {
+            if isMainTabRoot {
                 PageHeader(title: L10n.string("ui.navigation.library")) {
-                    libraryHeaderButtons(actions: actions)
+                    libraryHeaderButtons()
                 }
 
                 if canSearchCurrentPage {
@@ -195,16 +195,16 @@ struct LibraryView: View {
         }
     }
 
-    /// The header's right side for the main tab root: the trio
-    /// plus the playlists create / sort buttons in ONE capsule,
-    /// exactly as the nav bar merged them. The create / sort
-    /// pair only appears on the playlists overview; while
-    /// reordering, the checkmark replaces them.
+    /// The header's right side for the main tab root: ONLY the
+    /// playlists create / sort buttons, in the same custom
+    /// capsule the other three tab roots draw their trio in.
+    /// The trio (messages / recognition / avatar) does NOT
+    /// belong here — this page's own actions are just + and
+    /// sort. The pair only appears on the playlists overview;
+    /// while reordering, the checkmark replaces them.
     @ViewBuilder
-    private func libraryHeaderButtons(actions: TopBarActions) -> some View {
+    private func libraryHeaderButtons() -> some View {
         HeaderPill {
-            HeaderTrioContent(actions: actions)
-
             if section == .playlists {
                 if isReorderingSections {
                     Button {
