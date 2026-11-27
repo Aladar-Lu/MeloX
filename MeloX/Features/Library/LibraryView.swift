@@ -65,7 +65,7 @@ struct LibraryView: View {
             fixedPage.map { AppTab(libraryPage: $0).title }
                 ?? L10n.string("ui.navigation.library"),
             isPresented: showsNavigationTitle,
-            usesInlineTitle: fixedPage == nil && availablePages.count > 1
+            usesInlineTitle: fixedPage == nil
         )
         .librarySearchable(
             text: $searchQuery,
@@ -216,12 +216,12 @@ struct LibraryView: View {
 }
 
 private extension View {
-    /// Plain title text, as the original app had it: a large
-    /// title normally, inline when the library tab hosts
-    /// several pages (then the separate ToolbarTitleMenu in the
-    /// toolbar switches the page). The one-line header that put
-    /// the title in a leading toolbar item collapsed into a
-    /// "..." button, so it is gone.
+    /// Tab root: inline title, always. The title then shares
+    /// the bar row with the current section's buttons (the
+    /// playlists + / sort pill) — one line, no empty white band
+    /// above it. A large title would put the title on its own
+    /// row below an empty bar row. Fixed pages (a single library
+    /// section opened on its own) keep the large title.
     @ViewBuilder
     func libraryNavigationTitle(
         _ title: String,

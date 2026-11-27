@@ -398,28 +398,7 @@ struct ContentView: View {
                     value: tab,
                     role: tab == .search ? .search : nil
                 ) {
-                    if tab == .home {
-                        // The messages + recognition capsule
-                        // floats in the Home bar row (see
-                        // homeMessagesCapsule). It needs the
-                        // safe-area top to sit centred in the
-                        // bar row, next to the avatar button.
-                        GeometryReader { geometry in
-                            navigationStack(for: tab)
-                                .overlay(alignment: .topTrailing) {
-                                    if navigationPaths[.home]?.isEmpty == true {
-                                        homeMessagesCapsule
-                                            .padding(
-                                                .top,
-                                                geometry.safeAreaInsets.top + 4
-                                            )
-                                            .padding(.trailing, 72)
-                                    }
-                                }
-                        }
-                    } else {
-                        navigationStack(for: tab)
-                    }
+                    navigationStack(for: tab)
                 }
             }
         }
@@ -443,54 +422,15 @@ struct ContentView: View {
         }
     }
 
-    /// Private messages + song recognition as a floating glass
-    /// capsule in the Home bar row, to the left of the avatar
-    /// button. They CANNOT live in the toolbar: iOS 27 merges
-    /// every .topBarTrailing item — from any view, at any level
-    /// — into a single pill, so the avatar split kept failing
-    /// (9110403 and 9110405 both showed one merged capsule).
-    /// The avatar stays in HomeView's toolbar, alone in its own
-    /// circular button at the far right; this capsule sits 72pt
-    /// from the right edge, clearing it with an 8-12pt gap.
-    /// Hidden whenever the Home stack has pushed a page, so it
-    /// never covers a detail page's own bar buttons.
-    private var homeMessagesCapsule: some View {
-        HStack(spacing: 16) {
-            if library.isLoggedIn {
-                Button {
-                    navigate(to: .privateMessages, in: .home)
-                } label: {
-                    Label("ui.messages.private.title", systemImage: "bubble.left.and.bubble.right")
-                        .labelStyle(.iconOnly)
-                }
-                .accessibilityLabel("ui.messages.private.title")
-                .accessibilityHint("ui.messages.private.open_hint")
-            }
-
-            Button {
-                navigate(to: .songRecognition, in: .home)
-            } label: {
-                Label("ui.recognition.title", systemImage: "waveform")
-                    .labelStyle(.iconOnly)
-            }
-            .accessibilityLabel("ui.recognition.title")
-        }
-        .foregroundStyle(Color.accentColor)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(
-            Capsule()
-                .stroke(Color.primary.opacity(0.08), lineWidth: 0.5)
-        )
-        .shadow(color: .black.opacity(0.08), radius: 8, y: 2)
-    }
-
     @ViewBuilder
     private func tabRoot(for tab: AppTab) -> some View {
         switch tab {
         case .home:
-            HomeView(onAccountTap: { presentedSheet = .settings })
+            HomeView(
+                onAccountTap: { presentedSheet = .settings },
+                onMessagesTap: { navigate(to: .privateMessages, in: .home) },
+                onRecognitionTap: { navigate(to: .songRecognition, in: .home) }
+            )
         case .recommended:
             HomeRecommendedView()
                 .navigationTitle("ui.navigation.recommended")

@@ -33,6 +33,13 @@ struct SearchView: View {
             }
         }
         .navigationTitle("ui.navigation.search")
+        // Inline, not large: the title shares the bar row with
+        // nothing on the right — one line, no empty white band
+        // above it. It has to stay a nav title because the
+        // search field lives in the navigation bar drawer; a
+        // custom header would need the bar hidden and the
+        // search field would go with it.
+        .navigationBarTitleDisplayMode(.inline)
         .searchable(
             text: $query,
             placement: .navigationBarDrawer(displayMode: .always),
