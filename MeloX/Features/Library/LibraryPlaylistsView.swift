@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The 收藏歌单 page, Apple Music 资料库 style.
 ///
