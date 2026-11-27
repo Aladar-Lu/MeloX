@@ -24,7 +24,8 @@ struct PodcastHomeView: View {
     var body: some View {
         if showsNavigationTitle {
             pageContent
-                .tabRootHeaderTitle(L10n.string("ui.navigation.podcasts"))
+                .navigationTitle("ui.navigation.podcasts")
+                .navigationBarTitleDisplayMode(.large)
         } else {
             pageContent
         }

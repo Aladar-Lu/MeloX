@@ -32,7 +32,7 @@ struct SearchView: View {
                 searchResults
             }
         }
-        .tabRootHeaderTitle(L10n.string("ui.navigation.search"))
+        .navigationTitle("ui.navigation.search")
         .searchable(
             text: $query,
             placement: .navigationBarDrawer(displayMode: .always),

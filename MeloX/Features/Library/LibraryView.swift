@@ -65,15 +65,20 @@ struct LibraryView: View {
             fixedPage.map { AppTab(libraryPage: $0).title }
                 ?? L10n.string("ui.navigation.library"),
             isPresented: showsNavigationTitle,
-            hasPageMenu: fixedPage == nil && availablePages.count > 1
-        ) {
-            pagePicker.pickerStyle(.inline)
-        }
+            usesInlineTitle: fixedPage == nil && availablePages.count > 1
+        )
         .librarySearchable(
             text: $searchQuery,
             prompt: searchPrompt,
             isEnabled: canSearchCurrentPage
         )
+        .toolbar {
+            if showsNavigationTitle, fixedPage == nil, availablePages.count > 1 {
+                ToolbarTitleMenu {
+                    pagePicker.pickerStyle(.inline)
+                }
+            }
+        }
         .onAppear {
             guard !hasAppliedInitialPage else { return }
             hasAppliedInitialPage = true
@@ -211,22 +216,21 @@ struct LibraryView: View {
 }
 
 private extension View {
-    /// One-line tab-root header (title left, actions right). When
-    /// the library tab hosts several pages, the title is a menu
-    /// that switches the page, like before.
+    /// Plain title text, as the original app had it: a large
+    /// title normally, inline when the library tab hosts
+    /// several pages (then the separate ToolbarTitleMenu in the
+    /// toolbar switches the page). The one-line header that put
+    /// the title in a leading toolbar item collapsed into a
+    /// "..." button, so it is gone.
     @ViewBuilder
-    func libraryNavigationTitle<MenuContent: View>(
+    func libraryNavigationTitle(
         _ title: String,
         isPresented: Bool,
-        hasPageMenu: Bool,
-        @ViewBuilder pageMenu: () -> MenuContent
+        usesInlineTitle: Bool
     ) -> some View {
         if isPresented {
-            if hasPageMenu {
-                tabRootHeaderTitleMenu(title, content: pageMenu)
-            } else {
-                tabRootHeaderTitle(title)
-            }
+            navigationTitle(title)
+                .navigationBarTitleDisplayMode(usesInlineTitle ? .inline : .automatic)
         } else {
             self
         }

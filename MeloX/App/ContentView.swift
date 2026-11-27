@@ -428,7 +428,7 @@ struct ContentView: View {
             HomeView(onAccountTap: { presentedSheet = .settings })
         case .recommended:
             HomeRecommendedView()
-                .tabRootHeaderTitle(L10n.string("ui.navigation.recommended"))
+                .navigationTitle("ui.navigation.recommended")
         case .music:
             ExploreView(navigationTitle: L10n.string("ui.navigation.music"))
         case .podcasts:

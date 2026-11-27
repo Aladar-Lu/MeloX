@@ -24,6 +24,7 @@ struct LibraryPlaylistsView: View {
     @State private var deletionError: String?
     @State private var playbackErrorMessage: String?
     @State private var isReorderingSections = false
+    @State private var draggedSection: LibraryPlaylistSection?
 
     init(
         searchQuery: String,
@@ -34,26 +35,35 @@ struct LibraryPlaylistsView: View {
     }
 
     var body: some View {
-        List {
+        // The grids live in a ScrollView, NOT in a List. A grid
+        // inside a List is one List row holding many cards, so a
+        // long-press lifts the whole grid as one image (and the
+        // List drew a ">" on every NavigationLink card). In a
+        // ScrollView each card is its own view: long-press lifts
+        // only that card, and a Button gets no chevron. The
+        // search results are the one place a List is still
+        // right — they are proper rows, with swipe actions.
+        Group {
             if isSearching {
-                searchResultsSection
+                List {
+                    searchResultsSection
+                }
+                .listStyle(.plain)
             } else if let filter {
-                playlistGridSection(for: filter)
+                ScrollView {
+                    playlistGrid(for: filter)
+                }
             } else {
-                overviewSections
+                ScrollView {
+                    overviewContent
+                }
             }
         }
-        .listStyle(.plain)
         .disabled(isDeletingPlaylist)
-        .environment(
-            \.editMode,
-            isReorderingSections
-                ? .constant(.active)
-                : .constant(.inactive)
-        )
         .onChange(of: isSearching) { _, searching in
-            // Swipe actions only work outside reorder mode; leave
-            // reorder mode before the search results appear.
+            // Leave reorder mode before the search results
+            // appear; the reorder drag handles only exist on
+            // the overview rows.
             if searching {
                 isReorderingSections = false
             }
@@ -179,32 +189,44 @@ struct LibraryPlaylistsView: View {
 
     // MARK: - Overview
 
-    @ViewBuilder
-    private var overviewSections: some View {
-        if !pinnedPlaylists.isEmpty {
-            Section("ui.library.playlists.pinned") {
+    private var overviewContent: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if !pinnedPlaylists.isEmpty {
+                Text("ui.library.playlists.pinned")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
                 pinnedGrid
-                    .listRowInsets(
-                        EdgeInsets(
-                            top: 8,
-                            leading: 16,
-                            bottom: 12,
-                            trailing: 16
-                        )
-                    )
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .deleteDisabled(true)
-                    .moveDisabled(true)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 12)
             }
-        }
 
-        Section {
-            ForEach(settings.libraryPlaylistSectionOrder) { section in
-                sectionRow(for: section)
-                    .deleteDisabled(true)
+            VStack(spacing: 0) {
+                ForEach(visibleSections) { section in
+                    sectionRow(for: section)
+                    if section != visibleSections.last {
+                        Divider()
+                            .padding(.leading, 16)
+                    }
+                }
             }
-            .onMove(perform: moveSections)
+            .padding(.top, pinnedPlaylists.isEmpty ? 8 : 16)
+        }
+        .padding(.bottom, 12)
+    }
+
+    /// The three rows that have something to show. The
+    /// listening-rank row needs a logged-in profile; when it
+    /// is hidden the other two still reorder around it.
+    private var visibleSections: [LibraryPlaylistSection] {
+        settings.libraryPlaylistSectionOrder.filter { section in
+            if section == .listeningRank {
+                library.profile?.id != nil
+            } else {
+                true
+            }
         }
     }
 
@@ -224,112 +246,136 @@ struct LibraryPlaylistsView: View {
         }
     }
 
+    /// In reorder mode the row is plain (no NavigationLink, so
+    /// a tap cannot navigate away mid-drag) and draggable; the
+    /// drag handle replaces the chevron. Outside reorder mode
+    /// it is a NavigationLink with an explicit chevron — a
+    /// NavigationLink in a ScrollView gets no automatic one.
     @ViewBuilder
     private func sectionRow(
         for section: LibraryPlaylistSection
     ) -> some View {
-        switch section {
-        case .listeningRank:
-            if let userID = library.profile?.id {
-                NavigationLink {
-                    UserListeningRankView(userID: userID)
-                } label: {
-                    Label(
-                        "ui.library.my_listening_rank",
-                        systemImage: "chart.bar.xaxis"
+        if isReorderingSections {
+            sectionRowLabel(for: section)
+                .onDrag {
+                    draggedSection = section
+                    return NSItemProvider(
+                        object: section.id as NSString
                     )
                 }
-                .accessibilityHint("ui.library.my_listening_rank.hint")
-            }
-        case .own:
-            NavigationLink {
-                LibraryPlaylistsView(
-                    searchQuery: searchQuery,
-                    filter: .own
+                .onDrop(
+                    of: [.text],
+                    delegate: SectionReorderDropDelegate(
+                        targetSection: section,
+                        draggedSection: $draggedSection,
+                        settings: settings
+                    )
                 )
-                .navigationTitle(
-                    L10n.string("ui.library.playlists.own")
-                )
-                .navigationBarTitleDisplayMode(.inline)
-            } label: {
-                Label(
-                    "ui.library.playlists.own",
-                    systemImage: "music.note.list"
-                )
-            }
-        case .collected:
-            NavigationLink {
-                LibraryPlaylistsView(
-                    searchQuery: searchQuery,
-                    filter: .collected
-                )
-                .navigationTitle(
-                    L10n.string("ui.library.playlists.collected")
-                )
-                .navigationBarTitleDisplayMode(.inline)
-            } label: {
-                Label(
-                    "ui.library.playlists.collected",
-                    systemImage: "heart"
-                )
+        } else {
+            switch section {
+            case .listeningRank:
+                if let userID = library.profile?.id {
+                    NavigationLink {
+                        UserListeningRankView(userID: userID)
+                    } label: {
+                        sectionRowLabel(for: section)
+                    }
+                    .accessibilityHint("ui.library.my_listening_rank.hint")
+                }
+            case .own:
+                NavigationLink {
+                    LibraryPlaylistsView(
+                        searchQuery: searchQuery,
+                        filter: .own
+                    )
+                    .navigationTitle(
+                        L10n.string("ui.library.playlists.own")
+                    )
+                    .navigationBarTitleDisplayMode(.inline)
+                } label: {
+                    sectionRowLabel(for: section)
+                }
+            case .collected:
+                NavigationLink {
+                    LibraryPlaylistsView(
+                        searchQuery: searchQuery,
+                        filter: .collected
+                    )
+                    .navigationTitle(
+                        L10n.string("ui.library.playlists.collected")
+                    )
+                    .navigationBarTitleDisplayMode(.inline)
+                } label: {
+                    sectionRowLabel(for: section)
+                }
             }
         }
     }
 
-    private func moveSections(
-        from source: IndexSet,
-        to destination: Int
-    ) {
-        var order = settings.libraryPlaylistSectionOrder
-        order.move(fromOffsets: source, toOffset: destination)
-        settings.setLibraryPlaylistSectionOrder(order)
+    private func sectionRowLabel(
+        for section: LibraryPlaylistSection
+    ) -> some View {
+        HStack(spacing: 12) {
+            Label(section.title, systemImage: sectionIcon(for: section))
+            Spacer()
+            if isReorderingSections {
+                Image(systemName: "line.3.horizontal")
+                    .foregroundStyle(.secondary)
+            } else {
+                Image(systemName: "chevron.right")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.vertical, 12)
+        .contentShape(.rect)
+    }
+
+    private func sectionIcon(
+        for section: LibraryPlaylistSection
+    ) -> String {
+        switch section {
+        case .listeningRank:
+            "chart.bar.xaxis"
+        case .own:
+            "music.note.list"
+        case .collected:
+            "heart"
+        }
     }
 
     // MARK: - Sub-page grid
 
-    @ViewBuilder
-    private func playlistGridSection(
+    private func playlistGrid(
         for section: LibraryPlaylistSection
     ) -> some View {
-        Section {
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: 16),
-                    GridItem(.flexible(), spacing: 16),
-                ],
-                alignment: .leading,
-                spacing: 24
-            ) {
-                ForEach(playlists(for: section)) { playlist in
-                    playlistCard(for: playlist)
-                }
+        LazyVGrid(
+            columns: [
+                GridItem(.flexible(), spacing: 16),
+                GridItem(.flexible(), spacing: 16),
+            ],
+            alignment: .leading,
+            spacing: 24
+        ) {
+            ForEach(playlists(for: section)) { playlist in
+                playlistCard(for: playlist)
             }
-            .listRowInsets(
-                EdgeInsets(
-                    top: 8,
-                    leading: 16,
-                    bottom: 12,
-                    trailing: 16
-                )
-            )
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
-            .deleteDisabled(true)
-            .moveDisabled(true)
         }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
     }
 
     /// A plain Button + programmatic navigation, NOT a
-    /// NavigationLink. The grid is one List row holding many
-    /// cards, and a List draws its disclosure chevron (">") on
-    /// every NavigationLink row — meaningless beside a big
-    /// square cover — and the links in that shared row all
-    /// fired together: tapping one card pushed every playlist
-    /// in the grid onto the stack. A Button gets no chevron,
-    /// and one tap appends exactly one route, so one tap
-    /// opens exactly one playlist. Context menu and the zoom
-    /// transition are unchanged; search-result rows keep
-    /// their NavigationLinks (and chevrons) as before.
+    /// NavigationLink. The grid is a ScrollView of standalone
+    /// cards now (it used to be one List row holding many
+    /// cards, which is why a List drew a ">" on every card
+    /// and a long-press lifted the whole grid as one image).
+    /// A Button in a ScrollView gets no chevron, one tap
+    /// appends exactly one route, and a long-press lifts only
+    /// the card pressed. Context menu and the zoom transition
+    /// are unchanged; search-result rows keep their
+    /// NavigationLinks (and chevrons) as before.
     private func playlistCard(for playlist: Playlist) -> some View {
         Button {
             openMusicRoute(.playlist(playlist))
@@ -516,5 +562,35 @@ private struct LibraryPlaylistRow: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+}
+
+/// Drag-to-reorder for the three overview rows, which live in
+/// a ScrollView now (List .onMove only works in a List). The
+/// dragged row is tracked in the view's state; dropping it on
+/// another row moves it there in the persisted order.
+private struct SectionReorderDropDelegate: DropDelegate {
+    let targetSection: LibraryPlaylistSection
+    @Binding var draggedSection: LibraryPlaylistSection?
+    let settings: AppSettings
+
+    func dropEntered(info: DropInfo) {
+        guard let dragged = draggedSection,
+              dragged != targetSection
+        else { return }
+        var order = settings.libraryPlaylistSectionOrder
+        guard let from = order.firstIndex(of: dragged),
+              let to = order.firstIndex(of: targetSection)
+        else { return }
+        order.move(
+            fromOffsets: IndexSet(integer: from),
+            toOffset: to > from ? to + 1 : to
+        )
+        settings.setLibraryPlaylistSectionOrder(order)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggedSection = nil
+        return true
     }
 }

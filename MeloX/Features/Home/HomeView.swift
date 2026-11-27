@@ -25,48 +25,39 @@ struct HomeView: View {
     }
 
     var body: some View {
-        sectionContent(for: activeSection)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            // The picker lives in the scroll content's top
-            // safe-area inset instead of a fixed VStack row above
-            // it. A fixed row broke the scroll behaviour every
-            // other tab root has: the section content never
-            // reached the navigation bar, so on scroll nothing
-            // slid under a frosted mask and the top stayed a
-            // static band with no clear boundary. As an inset,
-            // the picker stays pinned and one tap away, but the
-            // content now scrolls under it (and the nav bar) like
-            // Search / Discover / Library — the opaque frosted
-            // mask with a clear boundary iOS 27 shows there.
-            .safeAreaInset(edge: .top, spacing: 0) {
-                if availableSections.count > 1 {
-                    sectionPicker
-                }
+        VStack(spacing: 0) {
+            if availableSections.count > 1 {
+                sectionPicker
             }
-            .tabRootHeaderTitle(L10n.string("ui.navigation.home"))
-            // The avatar lives in THIS view's own .toolbar
-            // modifier — not in ContentView's primaryToolbar,
-            // and not in a second .toolbar modifier on the same
-            // view there. iOS renders each view's toolbar as its
-            // own glass pill (the Library "+" stands alone
-            // because it comes from LibraryView's own toolbar),
-            // while two groups — or two .toolbar modifiers — on
-            // one view merge into a single capsule, the way the
-            // trio merged in 9110403. Trailing order: the outer
-            // (ContentView) messages + recognition pill sits
-            // left, this inner item lands at the far right —
-            // the same order the original app showed (trio left,
-            // Library "+" far right).
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        onAccountTap()
-                    } label: {
-                        accountToolbarLabel
-                    }
-                    .accessibilityLabel(accountToolbarAccessibilityLabel)
+
+            sectionContent(for: activeSection)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        // Plain large title, like the original app and like the
+        // target screenshot: the big 首页 sits below the bar,
+        // the pills below it, content directly below the pills.
+        // The one-line inline header (empty title + a leading
+        // Text item) collapsed into a "..." button and left a
+        // dead band, so it is gone.
+        .navigationTitle("ui.navigation.home")
+        .navigationBarTitleDisplayMode(.large)
+        // The avatar lives in THIS view's own .toolbar
+        // modifier — not in ContentView's primaryToolbar.
+        // iOS renders each view's toolbar as its own glass
+        // pill, while two groups on one view merge into a
+        // single capsule, the way the trio merged in 9110403.
+        // (The Library "+" stands alone for the same reason:
+        // it comes from LibraryView's own toolbar.)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    onAccountTap()
+                } label: {
+                    accountToolbarLabel
                 }
+                .accessibilityLabel(accountToolbarAccessibilityLabel)
             }
+        }
         .onChange(of: availableSections) { _, sections in
             guard !sections.contains(section) else { return }
             section = sections.first ?? .recommended
@@ -140,15 +131,7 @@ struct HomeView: View {
         }
         .scrollClipDisabled()
         .padding(.vertical, 8)
-        .background(.bar)
-        // Crisp bottom edge for the frosted strip: over a black
-        // background the .bar material alone has no visible
-        // boundary, which is what made the Home header read as
-        // one flat band. The other tab roots get this edge from
-        // the navigation bar itself.
-        .overlay(alignment: .bottom) {
-            Divider()
-        }
+        .background(.background)
     }
 
     @ViewBuilder
