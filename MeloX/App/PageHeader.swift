@@ -143,7 +143,7 @@ struct HeaderTrioContent: View {
 
     private var avatarAccessibilityLabel: String {
         if let profile = library.profile {
-            return profile.name
+            return profile.nickname
         }
         return L10n.string("ui.account.title")
     }

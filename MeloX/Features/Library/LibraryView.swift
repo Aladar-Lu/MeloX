@@ -255,7 +255,7 @@ struct LibraryView: View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
-            TextField(text: $searchQuery, prompt: Text(searchPrompt))
+            TextField("", text: $searchQuery, prompt: Text(searchPrompt))
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .submitLabel(.search)
